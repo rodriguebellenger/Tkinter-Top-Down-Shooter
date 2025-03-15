@@ -1,6 +1,7 @@
 import tkinter as tk
 from time import time
 from math import sqrt
+from random import randint
 
 # COMMENT JOUER :
 # z : déplacement ver le haut
@@ -81,7 +82,7 @@ class Enemy:
         else:
             return
 
-class MovableCircleApp:
+class TopDownShooter:
     def __init__(self, root):
         self.root = root
         self.root.title("Top-Down Shooter")
@@ -91,18 +92,25 @@ class MovableCircleApp:
         self.canvas = tk.Canvas(root, width=self.width, height=self.height, bg="white")
         self.canvas.pack()
 
+        self.enemies = []
+        self.current_level = 0
+        self.create_levels(10)
+        self.start_game()
+
         self.mouse_x = 0 
         self.mouse_y = 0
 
-        self.used_gun = 0
-        self.weapon_stat = [{"Name":"Gun",           "Type":"Gun",     "ShootCooldown":450,  "Speed":7,  "Damage":10, "BulletSize":5},
-                            {"Name":"Machine Gun",   "Type":"Gun",     "ShootCooldown":90,   "Speed":20, "Damage":3,  "BulletSize":5},
-                            {"Name":"Super Gun",     "Type":"Gun",     "ShootCooldown":750,  "Speed":4,  "Damage":20, "BulletSize":15},
-                            {"Name":"Shotgun",       "Type":"Shotgun", "ShootCooldown":600,  "Speed":9, "Damage":10, "BulletSize":5, "SpreadOffset":[-5, 0, 5]},
-                            {"Name":"Super Shotgun", "Type":"Shotgun", "ShootCooldown":1000, "Speed":10, "Damage":10, "BulletSize":5, "SpreadOffset":[-6, -4, -2, 0, 2, 4, 6]},
-                            {"Name":"Mega Shotgun",  "Type":"Shotgun", "ShootCooldown":1000, "Speed":10, "Damage":10, "BulletSize":5, "SpreadOffset":[x for x in range(-20, 21, 1)]}]
+        self.weapon_stat = {"Gun" :           {"Type":"Gun",     "ShootCooldown":450,  "Speed":7,  "Damage":10, "BulletSize":5},
+                            "Machine Gun" :   {"Type":"Gun",     "ShootCooldown":90,   "Speed":20, "Damage":3,  "BulletSize":5},
+                            "Super Gun" :     {"Type":"Gun",     "ShootCooldown":750,  "Speed":4,  "Damage":20, "BulletSize":15},
+                            "Shotgun" :       {"Type":"Shotgun", "ShootCooldown":600,  "Speed":9,  "Damage":10, "BulletSize":5, "SpreadOffset":[-5, 0, 5]},
+                            "Super Shotgun" : {"Type":"Shotgun", "ShootCooldown":800,  "Speed":10, "Damage":10, "BulletSize":5, "SpreadOffset":[-6, -4, -2, 0, 2, 4, 6]},
+                            "Mega Shotgun" :  {"Type":"Shotgun", "ShootCooldown":1000, "Speed":10, "Damage":10, "BulletSize":5, "SpreadOffset":[x for x in range(-20, 21, 1)]}}
         
-        self.weapon_text = self.canvas.create_text(5, self.height-25, text=f"{self.weapon_stat[self.used_gun]['Name']}", font=("Arial", 16), fill="black", anchor="nw")
+        self.used_gun = 0
+        self.inventory = ["Gun"]
+        
+        self.weapon_text = self.canvas.create_text(5, self.height-25, text=f"{self.inventory[self.used_gun]}", font=("Arial", 16), fill="black", anchor="nw")
         
         self.player = self.canvas.create_oval((self.width//2)-20, (self.height//2)-20, (self.width//2)+20, (self.height//2)+20, fill="blue")
         
@@ -112,8 +120,6 @@ class MovableCircleApp:
         self.last_shot_time = 0
 
         self.shooting = False
-
-        self.enemies = []
 
         self.root.bind("<Motion>", self.mouse_position)
         self.root.bind("<B1-Motion>", self.mouse_position)
@@ -134,6 +140,18 @@ class MovableCircleApp:
         self.root.bind("<B1-Motion>", self.shoot_projectile, add="+")
 
         self.root.bind("<Button-3>", self.create_ennemi)
+
+    def create_levels(self, numberOflevels):
+        self.levels = []
+        for i in range(numberOflevels):
+            self.levels.append(i+randint(-(i//4), i//4))
+
+    def start_game(self):
+        if len(self.enemies) == 0:
+            for _ in range(self.levels[self.current_level]):
+                self.enemies.append(Enemy(self.root, self.canvas, self.player, self.enemies, randint(0, self.width), randint(0, self.height), "basic", 20))
+            self.current_level += 1
+        self.root.after(100, self.start_game)
 
     def mouse_position(self, event):
         self.mouse_x = event.x
@@ -184,17 +202,17 @@ class MovableCircleApp:
 
     def shoot_projectile(self, event):
         if self.shooting:
-            if self.weapon_stat[self.used_gun]["Type"] == "Gun":
+            if self.weapon_stat[self.inventory[self.used_gun]]["Type"] == "Gun":
                 self.gun()
-            elif self.weapon_stat[self.used_gun]["Type"] == "Shotgun":
+            elif self.weapon_stat[self.inventory[self.used_gun]]["Type"] == "Shotgun":
                 self.shotgun()
-            self.root.after(self.weapon_stat[self.used_gun]["ShootCooldown"], lambda: self.shoot_projectile(event))
+            self.root.after(self.weapon_stat[self.inventory[self.used_gun]]["ShootCooldown"], lambda: self.shoot_projectile(event))
         else:
             return
         
     def shotgun(self):
         current_time = time()*1000
-        if current_time - self.last_shot_time <= self.weapon_stat[self.used_gun]["ShootCooldown"]:
+        if current_time - self.last_shot_time <= self.weapon_stat[self.inventory[self.used_gun]]["ShootCooldown"]:
             return
         self.last_shot_time = current_time
 
@@ -212,14 +230,14 @@ class MovableCircleApp:
         perp_dx = -norm_dy
         perp_dy = norm_dx
 
-        for offset in self.weapon_stat[self.used_gun]["SpreadOffset"]:
+        for offset in self.weapon_stat[self.inventory[self.used_gun]]["SpreadOffset"]:
             new_dx = norm_dx + perp_dx * (offset / 50)
             new_dy = norm_dy + perp_dy * (offset / 50)
 
             # Re-normalize the final direction
             length = sqrt(new_dx**2 + new_dy**2)
-            step_x = (new_dx / length) * self.weapon_stat[self.used_gun]["Speed"]
-            step_y = (new_dy / length) * self.weapon_stat[self.used_gun]["Speed"]
+            step_x = (new_dx / length) * self.weapon_stat[self.inventory[self.used_gun]]["Speed"]
+            step_y = (new_dy / length) * self.weapon_stat[self.inventory[self.used_gun]]["Speed"]
 
             # Create projectile
             projectile = self.canvas.create_oval(cx-5, cy-5, cx+5, cy+5, fill="red")
@@ -231,7 +249,7 @@ class MovableCircleApp:
                 for enemy in self.enemies[:]:  # Iterate over a copy of the list
                     ex1, ey1, ex2, ey2 = self.canvas.coords(enemy.id)
                     if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-                        if enemy.take_damage(self.weapon_stat[self.used_gun]["Damage"]):
+                        if enemy.take_damage(self.weapon_stat[self.inventory[self.used_gun]]["Damage"]):
                             self.enemies.remove(enemy)
                         self.canvas.delete(proj)  # Remove projectile on impact
                         return
@@ -245,7 +263,7 @@ class MovableCircleApp:
             
     def gun(self):
         current_time = time()*1000
-        if current_time - self.last_shot_time <= self.weapon_stat[self.used_gun]["ShootCooldown"]:
+        if current_time - self.last_shot_time <= self.weapon_stat[self.inventory[self.used_gun]]["ShootCooldown"]:
             return
         self.last_shot_time = current_time
 
@@ -256,15 +274,16 @@ class MovableCircleApp:
         if dx == 0 and dy == 0:
             return
             
-        step_x = self.weapon_stat[self.used_gun]["Speed"] if dx > 0 else -self.weapon_stat[self.used_gun]["Speed"] if dx < 0 else 0
-        step_y = self.weapon_stat[self.used_gun]["Speed"] if dy > 0 else -self.weapon_stat[self.used_gun]["Speed"] if dy < 0 else 0
+        step_x = self.weapon_stat[self.inventory[self.used_gun]]["Speed"] if dx > 0 else -self.weapon_stat[self.inventory[self.used_gun]]["Speed"] if dx < 0 else 0
+        step_y = self.weapon_stat[self.inventory[self.used_gun]]["Speed"] if dy > 0 else -self.weapon_stat[self.inventory[self.used_gun]]["Speed"] if dy < 0 else 0
             
         if abs(dx) > abs(dy):
             step_y = step_y * (abs(dy) / abs(dx))
         else:
             step_x = step_x * (abs(dx) / abs(dy))
             
-        projectile = self.canvas.create_oval(cx-self.weapon_stat[self.used_gun]["BulletSize"], cy-self.weapon_stat[self.used_gun]["BulletSize"], cx+self.weapon_stat[self.used_gun]["BulletSize"], cy+self.weapon_stat[self.used_gun]["BulletSize"], fill="red")
+        bullet_size = self.weapon_stat[self.inventory[self.used_gun]]["BulletSize"]
+        projectile = self.canvas.create_oval(cx-bullet_size, cy-bullet_size, cx+bullet_size, cy+bullet_size, fill="red")
             
         def move_projectile(proj=projectile, sx=step_x, sy=step_y):
             self.canvas.move(proj, sx, sy)
@@ -273,7 +292,7 @@ class MovableCircleApp:
             for enemy in self.enemies[:]:  # Iterate over a copy of the list
                 ex1, ey1, ex2, ey2 = self.canvas.coords(enemy.id)
                 if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-                    if enemy.take_damage(self.weapon_stat[self.used_gun]["Damage"]):
+                    if enemy.take_damage(self.weapon_stat[self.inventory[self.used_gun]]["Damage"]):
                         self.enemies.remove(enemy)
                     self.canvas.delete(proj)  # Remove projectile on impact
                     return
@@ -287,15 +306,15 @@ class MovableCircleApp:
     
     def switch_weapon(self, event):
         self.used_gun += 1
-        if self.used_gun == len(self.weapon_stat):
+        if self.used_gun == len(self.inventory):
             self.used_gun = 0
-        self.canvas.itemconfig(self.weapon_text, text=f"{self.weapon_stat[self.used_gun]['Name']}")
+        self.canvas.itemconfig(self.weapon_text, text=f"{self.inventory[self.used_gun]}")
 
     def create_ennemi(self, event):
         self.enemies.append(Enemy(self.root, self.canvas, self.player, self.enemies, event.x, event.y, "basic", 20))
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = MovableCircleApp(root)
+    app = TopDownShooter(root)
     app.move()
     root.mainloop()
