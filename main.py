@@ -26,7 +26,7 @@ from random import randint, choices
 #            Mega Shotgun : 4%
 #   Soit améliorer vos statistiques (aléatoire) : 
 #       Soit vous allez plus vite
-#       Soit vous régénérer un point de vide
+#       Soit vous régénérer un point de vie
 
 class Enemy:
     def __init__(self, root, canvas, player, enemies, x, y, enemy_type):
