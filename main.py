@@ -19,14 +19,27 @@ from random import randint, choices
 #        Si vous posséder déjà l'arme, ses munitions sont ravitailler
 #        Si vous ne l'aviez pas, vous la gagnez avec toutes ses munitions
 #        Probabilité de chaque arme : 
-#            Machine Gun : 28%
-#            Super Gun : 27%
-#            Shotgun : 28%
-#            Super Shotgun : 13%
-#            Mega Shotgun : 4%
+#            Machine Gun : 21%
+#            Super Gun : 21%
+#            Shotgun : 21%
+#            Super Shotgun : 14%
+#            Powerful Gun : 14%
+#            Powerful Shotgun : 7%
+#            Mega Shotgun : 2%
 #   Soit améliorer vos statistiques (aléatoire) : 
 #       Soit vous allez plus vite
 #       Soit vous régénérer un point de vie
+
+# Spécificités des armes : 
+#   Gun : munition infini (arme de base)
+#   Machine Gun : tire vite mais fait peu de dégat
+#   Super Gun : tire lentement mais fait beaucoup de dégat
+#   Shotgun : tire 3 balles en même temps
+#   Super Shotgun : tire 7 balles en même temps
+#   Mega Shotgun : tire 41 balles en même temps
+#   Powerful Shotgun : tire 3 balles transperçantes
+#   Powerful Gun : tire une balle transperçante
+
 
 class Enemy:
     def __init__(self, root, canvas, player, enemies, x, y, enemy_type):
@@ -128,15 +141,17 @@ class TopDownShooter:
         self.mouse_x = 0 
         self.mouse_y = 0
 
-        self.unlockable_guns =   ["Machine Gun", "Super Gun", "Shotgun", "Super Shotgun", "Mega Shotgun"]
-        self.gun_probabilities = [28, 27, 28, 13, 4]
-        self.weapon_stat = {"Gun" :            {"Type":"Gun",     "MaxAmmo":"Inf", "ShootCooldown":450,  "Speed":7,  "Damage":10, "BulletSize":5},
-                            "Machine Gun" :    {"Type":"Gun",     "MaxAmmo":1000,  "ShootCooldown":90,   "Speed":20, "Damage":3,  "BulletSize":5},
-                            "Super Gun" :      {"Type":"Gun",     "MaxAmmo":25,    "ShootCooldown":750,  "Speed":4,  "Damage":20, "BulletSize":15},
-                            "Shotgun" :        {"Type":"Shotgun", "MaxAmmo":50,    "ShootCooldown":600,  "Speed":9,  "Damage":10, "BulletSize":[5, 10, 5],                                                 "SpreadOffset":[-5, 0, 5]},
-                            "Super Shotgun" :  {"Type":"Shotgun", "MaxAmmo":30,    "ShootCooldown":800,  "Speed":10, "Damage":10, "BulletSize":[5, 7, 9, 11, 9, 7, 5],                                     "SpreadOffset":[-6, -4, -2, 0, 2, 4, 6]},
-                            "Mega Shotgun" :   {"Type":"Shotgun", "MaxAmmo":20,    "ShootCooldown":1000, "Speed":10, "Damage":10, "BulletSize":[x for x in range(1, 21, 1)]+[x for x in range(21, 0, -1)], "SpreadOffset":[x for x in range(-20, 21, 1)]},
-                            "Cheat Shotgun" :  {"Type":"Shotgun", "MaxAmmo":"Inf", "ShootCooldown":100,  "Speed":10, "Damage":10, "BulletSize":[x for x in range(1, 21, 1)]+[x for x in range(21, 0, -1)], "SpreadOffset":[x for x in range(-20, 21, 1)]}}
+        self.unlockable_guns =   ["Machine Gun", "Super Gun", "Shotgun", "Super Shotgun", "Mega Shotgun", "Powerful Shotgun", "Powerful Gun"]
+        self.gun_probabilities = [21,            21,          21,        14,              2,              7,                  14]
+        self.weapon_stat = {"Gun" :              {"MaxAmmo":"Inf", "ShootCooldown":450,  "Speed":7,  "Damage":10, "BulletSize":[5],                                                        "SpreadOffset":[0],                            "Penetrate":False},
+                            "Machine Gun" :      {"MaxAmmo":1000,  "ShootCooldown":90,   "Speed":20, "Damage":3,  "BulletSize":[5],                                                        "SpreadOffset":[0],                            "Penetrate":False},
+                            "Super Gun" :        {"MaxAmmo":25,    "ShootCooldown":750,  "Speed":4,  "Damage":30, "BulletSize":[15],                                                       "SpreadOffset":[0],                            "Penetrate":False},
+                            "Shotgun" :          {"MaxAmmo":50,    "ShootCooldown":600,  "Speed":9,  "Damage":10, "BulletSize":[5, 10, 5],                                                 "SpreadOffset":[-5, 0, 5],                     "Penetrate":False},
+                            "Super Shotgun" :    {"MaxAmmo":30,    "ShootCooldown":800,  "Speed":10, "Damage":10, "BulletSize":[5, 7, 9, 11, 9, 7, 5],                                     "SpreadOffset":[-6, -4, -2, 0, 2, 4, 6],       "Penetrate":False},
+                            "Mega Shotgun" :     {"MaxAmmo":20,    "ShootCooldown":1000, "Speed":10, "Damage":10, "BulletSize":[x for x in range(1, 21, 1)]+[x for x in range(21, 0, -1)], "SpreadOffset":[x for x in range(-20, 21, 1)], "Penetrate":False},
+                            "Cheat Shotgun" :    {"MaxAmmo":"Inf", "ShootCooldown":100,  "Speed":10, "Damage":10, "BulletSize":[x for x in range(1, 21, 1)]+[x for x in range(21, 0, -1)], "SpreadOffset":[x for x in range(-20, 21, 1)], "Penetrate":False},
+                            "Powerful Gun" :     {"MaxAmmo":30,    "ShootCooldown":400,  "Speed":9,  "Damage":9,  "BulletSize":[5],                                                        "SpreadOffset":[0],                            "Penetrate":True},
+                            "Powerful Shotgun" : {"MaxAmmo":50,    "ShootCooldown":600,  "Speed":9,  "Damage":9,  "BulletSize":[5, 10, 5],                                                 "SpreadOffset":[-5, 0, 5],                     "Penetrate":True}}
 
         self.used_gun = 0
         self.inventory = [{"Name":"Gun", "Ammo":"inf"}]
@@ -343,17 +358,14 @@ class TopDownShooter:
 
     def shoot_projectile(self, event):
         if self.shooting and self.playing and self.inventory[self.used_gun]["Ammo"] != 0:
-            if self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Type"] == "Gun":
-                self.gun()
-            elif self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Type"] == "Shotgun":
-                self.shotgun()
+            self.shoot()
 
             if hasattr(self, "shoot_id"):
                 self.root.after_cancel(self.shoot_id)
 
             self.shoot_id = self.root.after(self.weapon_stat[self.inventory[self.used_gun]["Name"]]["ShootCooldown"], lambda: self.shoot_projectile(event))
         
-    def shotgun(self):
+    def shoot(self):
         current_time = time()*1000
         if current_time - self.last_shot_time <= self.weapon_stat[self.inventory[self.used_gun]["Name"]]["ShootCooldown"]:
             return
@@ -361,7 +373,7 @@ class TopDownShooter:
 
         if self.inventory[self.used_gun]["Ammo"] != "inf":
             self.inventory[self.used_gun]["Ammo"] -= 1
-        self.canvas.itemconfig(self.weapon_text, text=f"{self.inventory[self.used_gun]['Name']} : {self.inventory[self.used_gun]['Ammo']}/{self.weapon_stat[self.inventory[self.used_gun]['Name']]['MaxAmmo']}")
+            self.canvas.itemconfig(self.weapon_text, text=f"{self.inventory[self.used_gun]['Name']} : {self.inventory[self.used_gun]['Ammo']}/{self.weapon_stat[self.inventory[self.used_gun]['Name']]['MaxAmmo']}")
 
         x1, y1, x2, y2 = self.canvas.coords(self.player)
         cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
@@ -389,71 +401,29 @@ class TopDownShooter:
             bullet_size = self.weapon_stat[self.inventory[self.used_gun]["Name"]]["BulletSize"][i]
             projectile = self.canvas.create_oval(cx-bullet_size, cy-bullet_size, cx+bullet_size, cy+bullet_size, fill="red")
 
-            def move_projectile(proj=projectile, sx=step_x, sy=step_y):
+            gun_name = self.inventory[self.used_gun]["Name"]
+            touched_enemy = []
+            def move_projectile(proj=projectile, sx=step_x, sy=step_y, gun_name=gun_name, touched_enemy=touched_enemy):
                 self.canvas.move(proj, sx, sy)
                 px1, py1, px2, py2 = self.canvas.coords(proj)
 
-                for enemy in self.enemies[:]:  # Iterate over a copy of the list
+                for enemy in self.enemies[:]:
                     ex1, ey1, ex2, ey2 = self.canvas.coords(enemy.id)
                     if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-                        if enemy.take_damage(self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Damage"]):
-                            self.enemies.remove(enemy)
-                        self.canvas.delete(proj)  # Remove projectile on impact
-                        return
+                        if enemy not in touched_enemy:
+                            if enemy.take_damage(self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Damage"]):
+                                self.enemies.remove(enemy)
+                            if not self.weapon_stat[gun_name]["Penetrate"]:
+                                self.canvas.delete(proj)
+                                return
+                            touched_enemy.append(enemy)
 
                 if 0 < px1 < self.width and 0 < py1 < self.height:
-                    self.root.after(10, lambda: move_projectile(proj, sx, sy))
+                    self.root.after(10, lambda: move_projectile(proj, sx, sy, gun_name, touched_enemy))
                 else:
                     self.canvas.delete(proj)
 
             move_projectile()
-            
-    def gun(self):
-        current_time = time()*1000
-        if current_time - self.last_shot_time <= self.weapon_stat[self.inventory[self.used_gun]["Name"]]["ShootCooldown"]:
-            return
-        self.last_shot_time = current_time
-
-        if self.inventory[self.used_gun]["Ammo"] != "inf":
-            self.inventory[self.used_gun]["Ammo"] -= 1
-        self.canvas.itemconfig(self.weapon_text, text=f"{self.inventory[self.used_gun]['Name']} : {self.inventory[self.used_gun]['Ammo']}/{self.weapon_stat[self.inventory[self.used_gun]['Name']]['MaxAmmo']}")
-
-        x1, y1, x2, y2 = self.canvas.coords(self.player)
-        cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
-        dx, dy = self.mouse_x - cx, self.mouse_y - cy
-            
-        if dx == 0 and dy == 0:
-            return
-            
-        step_x = self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Speed"] if dx > 0 else -self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Speed"] if dx < 0 else 0
-        step_y = self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Speed"] if dy > 0 else -self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Speed"] if dy < 0 else 0
-            
-        if abs(dx) > abs(dy):
-            step_y = step_y * (abs(dy) / abs(dx))
-        else:
-            step_x = step_x * (abs(dx) / abs(dy))
-            
-        bullet_size = self.weapon_stat[self.inventory[self.used_gun]["Name"]]["BulletSize"]
-        projectile = self.canvas.create_oval(cx-bullet_size, cy-bullet_size, cx+bullet_size, cy+bullet_size, fill="red")
-            
-        def move_projectile(proj=projectile, sx=step_x, sy=step_y):
-            self.canvas.move(proj, sx, sy)
-            px1, py1, px2, py2 = self.canvas.coords(proj)
-
-            for enemy in self.enemies[:]:  # Iterate over a copy of the list
-                ex1, ey1, ex2, ey2 = self.canvas.coords(enemy.id)
-                if px1 < ex2 and px2 > ex1 and py1 < ey2 and py2 > ey1:
-                    if enemy.take_damage(self.weapon_stat[self.inventory[self.used_gun]["Name"]]["Damage"]):
-                        self.enemies.remove(enemy)
-                    self.canvas.delete(proj)  # Remove projectile on impact
-                    return
-
-            if 0 < px1 < self.width and 0 < py1 < self.height:
-                self.root.after(10, lambda: move_projectile(proj, sx, sy))
-            else:
-                self.canvas.delete(proj)
-
-        move_projectile()
     
     def switch_weapon(self, event):
         self.used_gun += 1
