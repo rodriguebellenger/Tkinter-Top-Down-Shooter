@@ -28,6 +28,7 @@ from random import randint, choices
 #            Mega Shotgun : 2%
 #   Soit améliorer vos statistiques (aléatoire) : 
 #       Soit vous allez plus vite
+#       Soit votre dash va plus loin
 #       Soit vous régénérer un point de vie
 
 # Spécificités des armes : 
@@ -39,6 +40,12 @@ from random import randint, choices
 #   Mega Shotgun : tire 41 balles en même temps
 #   Powerful Shotgun : tire 3 balles transperçantes
 #   Powerful Gun : tire une balle transperçante
+
+# Bouton spéciaux : 
+#   Reset : permet de recommencer la partie du début (réinitialise l'inventaire, les statistiques et le niveau actuel)
+#   Mode créatif : permet d'être invincible et d'avoir toutes les armes avec munition infini. Quand vous retournez en mode normal
+#   vous restez au niveau que vous avez atteint, peut importe que vous l'ayez atteint en créatif ou non, et vous retrouvez l'inventaire
+#   que vous aviez avant de passer en mode créatif (cela restore donc les armes, mais aussi les munitions)
 
 
 class Enemy:
@@ -77,6 +84,8 @@ class Enemy:
         self.root.after(200, self.damage_animation)
 
     def follow(self):
+        if not self.canvas.find_withtag(self.player):
+            return
         if self.canvas.find_withtag(self.id):
             px1, py1, px2, py2 = self.canvas.coords(self.player)
             cpx, cpy = (px1 + px2) / 2, (py1 + py2) / 2
@@ -118,7 +127,7 @@ class TopDownShooter:
         self.root.title("Top-Down Shooter")
 
         self.width = 1000
-        self.height = 1000
+        self.height = 900
         self.canvas = tk.Canvas(root, width=self.width, height=self.height, bg="white")
         self.canvas.pack()
 
@@ -126,16 +135,18 @@ class TopDownShooter:
         self.immortality = False
         self.dashing_step = 0
         self.dashing_directions = []
+        self.last_time_dash = 0
         self.dashing = False
 
         self.player = self.canvas.create_oval((self.width//2)-20, (self.height//2)-20, (self.width//2)+20, (self.height//2)+20, fill="blue")
         self.movement_speed = 5
+        self.dash_speed = 5
         self.health = 3
         self.health_bar = self.canvas.create_text(5, 5, text=f"{self.health}/3", font=("Arial", 55), fill="red", anchor="nw")
 
         self.enemies = []
         self.current_level = 0
-        self.create_levels(10)
+        self.create_levels(20)
         self.start_game()
 
         self.mouse_x = 0 
@@ -165,6 +176,14 @@ class TopDownShooter:
 
         self.shooting = False
 
+        self.reset_button = tk.Button(self.root, text="Reset", command=self.reset)
+        self.reset_button.pack()
+
+        self.reset_button = tk.Button(self.root, text="Mode créatif", command=self.change_mode)
+        self.reset_button.pack()
+
+        self.creative_mode = False
+
         self.root.bind("<Motion>", self.mouse_position)
         self.root.bind("<B1-Motion>", self.mouse_position)
         
@@ -187,6 +206,48 @@ class TopDownShooter:
 
         self.move()
         self.damage()
+
+    def change_mode(self):
+        if not self.creative_mode:
+            self.creative_mode = True
+            self.previous_weapon = self.inventory
+            self.inventory = []
+            for gun in self.weapon_stat.keys():
+                self.inventory.append({"Name":gun, "Ammo":"inf"})
+        else:
+            self.creative_mode = False
+            self.used_gun = 0
+            self.inventory = self.previous_weapon
+
+    def reset(self):
+        self.immortality = False
+        self.dashing_step = 0
+        self.dashing_directions = []
+        self.last_time_dash = 0
+        self.dashing = False
+
+        self.movement_speed = 5
+        self.dash_speed = 5
+        self.health = 3
+        self.canvas.itemconfig(self.health_bar, text=f"{self.health}/3")
+
+        for enemy in self.enemies:
+            self.canvas.delete(enemy.id)
+        self.enemies = []
+        self.current_level = 0
+        self.create_levels(10)
+        self.start_game()
+
+        self.used_gun = 0
+        self.inventory = [{"Name":"Gun", "Ammo":"inf"}]
+        self.canvas.itemconfig(self.weapon_text, text=f"{self.inventory[self.used_gun]['Name']} : {self.inventory[self.used_gun]['Ammo']}/{self.weapon_stat[self.inventory[self.used_gun]['Name']]['MaxAmmo']}")
+
+        self.movement_active = {"Up": False, "Down": False, "Left": False, "Right": False}
+
+        self.last_shot_time = 0
+        self.last_hit = 0
+
+        self.shooting = False
 
     def create_levels(self, numberOflevels):
         self.levels = []
@@ -225,11 +286,12 @@ class TopDownShooter:
             return "basic"
         
     def reward(self):
-        reward = randint(1, 2)
-        if reward == 1:
-            self.gun_reward()
-        else:
-            self.stat_reward()
+        if not self.creative_mode:
+            reward = randint(1, 2)
+            if reward == 1:
+                self.gun_reward()
+            else:
+                self.stat_reward()
     
     def gun_reward(self):
         random_gun = choices(self.unlockable_guns, weights=self.gun_probabilities)[0]
@@ -241,9 +303,11 @@ class TopDownShooter:
         self.inventory.append({"Name":random_gun, "Ammo": self.weapon_stat[random_gun]["MaxAmmo"]})
 
     def stat_reward(self):
-        reward = randint(1, 2)
+        reward = randint(1, 3)
         if reward == 1:
             self.movement_speed += 1
+        elif reward == 2:
+            self.dash_speed += 1
         else:
             self.health += 1
             self.canvas.itemconfig(self.health_bar, text=f"{self.health}/3")
@@ -253,7 +317,8 @@ class TopDownShooter:
         self.mouse_y = event.y
 
     def dash(self, event):
-        if self.dashing_step == 0 and not self.dashing:
+        if self.dashing_step == 0 and not self.dashing and time()-self.last_time_dash >= 0.5:
+            self.last_time_dash = time()
             self.dashing = True
             self.immortality = True
             self.canvas.itemconfig(self.player, fill="white")
@@ -278,13 +343,13 @@ class TopDownShooter:
             for direction in self.dashing_directions:
                 px1, py1, px2, py2 = self.canvas.coords(self.player)
                 if direction == "up" and py1 > 0:
-                    self.canvas.move(self.player, 0, -self.movement_speed*2)
+                    self.canvas.move(self.player, 0, -self.dash_speed*2)
                 if direction == "down" and py2 < self.height:
-                    self.canvas.move(self.player, 0, self.movement_speed*2)
+                    self.canvas.move(self.player, 0, self.dash_speed*2)
                 if direction == "left" and px1 > 0:
-                    self.canvas.move(self.player, -self.movement_speed*2, 0)
+                    self.canvas.move(self.player, -self.dash_speed*2, 0)
                 if direction == "right" and px2 < self.width:
-                    self.canvas.move(self.player, self.movement_speed*2, 0)
+                    self.canvas.move(self.player, self.dash_speed*2, 0)
 
             self.dashing_step += 1
             self.root.after(10, lambda : self.dash(event))
@@ -295,10 +360,11 @@ class TopDownShooter:
 
             for enemy in self.enemies:
                 a1, b1, a2, b2 = self.canvas.coords(enemy.id)
-                if not (x2 < a1 or a2 < x1 or y2 < b1 or b2 < y1) and not self.immortality:
+                if not (x2 < a1 or a2 < x1 or y2 < b1 or b2 < y1) and not self.immortality and not self.creative_mode:
                     self.health -= 1
                     if self.health == 0:
                         self.open_popup("Perdu", "Vous êtes malheureusement mort")
+                        self.canvas.delete(self.player)
                         self.playing = False
                     self.last_hit = time()
                     self.canvas.itemconfig(self.health_bar, text=f"{self.health}/3")
